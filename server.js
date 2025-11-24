@@ -1,11 +1,21 @@
-const express = require("express");
-const http = require("http");
-const cors = require("cors");
-require("dotenv").config();
+import express from "express";
+import http from "http";
+import cors from "cors";
+import dotenv from "dotenv";
+dotenv.config();
 
-const { initWebSocket } = require("./src/websocket");
-const { cleanUpDatabase } = require("./src/cleanup");
-const authRouter = require("./src/auth");
+import { initWebSocket } from "./src/websocket.js";
+import { cleanUpDatabase } from "./src/cleanup.js";
+import authRouter from "./src/logAuth.js";
+
+import userRouter from "./src/user.js";
+import menuRouter from "./src/menu.js";
+import cartRouter from "./src/cart.js";
+
+
+import authRoutes from "./src/routes/authRoutes.js";
+import menuRoutes from "./src/routes/menuRoutes.js";
+
 
 const app = express();
 app.use(express.json());
@@ -16,6 +26,9 @@ const allowedOrigins = [
   "http://localhost:5500",
   "http://127.0.0.1:5500",
   "http://localhost:8080",
+  "http://localhost:5501",
+  "http://127.0.0.1:5501",
+  "http://192.168.195.217/",
 ];
 
 app.use(
@@ -34,15 +47,21 @@ app.use(
   })
 );
 
-const cookieParser = require("cookie-parser");
+import cookieParser from "cookie-parser";
 app.use(cookieParser());
 
-app.use(authRouter);
+// app.use( authRouter);
+app.use(authRoutes);
+app.use("/menu", menuRoutes)
 
 initWebSocket(server);
 cleanUpDatabase();
 
-const PORT = 3000;
+// app.use("/menu", menuRouter);
+app.use("/images", express.static("./src/pictures"));
+app.use("/cart", cartRouter);
+
+const PORT = process.env.PORT
 server.listen(PORT, () => {
   console.log(`✅ Server running at http://localhost:${PORT}`);
 });

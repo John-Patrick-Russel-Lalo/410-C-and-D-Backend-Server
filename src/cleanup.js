@@ -1,14 +1,11 @@
-const jwt = require('jsonwebtoken');
-const { Pool } = require('pg');
-require('dotenv').config();
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
+import jwt from "jsonwebtoken"
+import dotenv from "dotenv";
+dotenv.config();
+import pool from "./config/db.js"
 const JWT_SECRET = process.env.JWT_SECRET
 const REFRESH_SECRET = process.env.REFRESH_SECRET
 
-// for refresh token stored from database
-function cleanUpDatabase() {
+export function cleanUpDatabase() {
   setInterval(async () => {
     try {
       const result = await pool.query("SELECT token FROM refresh_tokens");
@@ -28,7 +25,7 @@ function cleanUpDatabase() {
     } catch (err) {
       console.error("Error during refresh token cleanup:", err);
     }
-  }, 60 * 60 * 1000); // Every hour
+  }, 60 * 60 * 1000); // every hour the server will clean the token if there is a expired token in the database
 }
 
-module.exports = { cleanUpDatabase };
+

@@ -1,6 +1,10 @@
-const WebSocket = require('ws');
-const jwt = require('jsonwebtoken');
-require('dotenv').config();
+import { WebSocketServer } from "ws";
+
+
+import jwt from "jsonwebtoken"
+import dotenv from "dotenv";
+dotenv.config();
+
 
 const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
 
@@ -12,8 +16,8 @@ function verifyAccessToken(token) {
   }
 }
 
-function initWebSocket(server) {
-  const wss = new WebSocket.Server({ server });
+export function initWebSocket(server) {
+  const wss = new WebSocketServer({ server });
   const clients = new Map();
 
   wss.on('connection', (ws) => {
@@ -81,4 +85,3 @@ function initWebSocket(server) {
   console.log('WebSocket server initialized');
 }
 
-module.exports = { initWebSocket };
