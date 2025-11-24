@@ -8,8 +8,6 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const REFRESH_SECRET = process.env.REFRESH_SECRET;
 const NODE_ENV = process.env.NODE_ENV || "development";
 
-
-
 export const signup = async (req, res) => {
   try {
     const { name, email, password } = req.body;

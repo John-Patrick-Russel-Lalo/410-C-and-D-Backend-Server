@@ -1,4 +1,6 @@
-http://localhost:3000/cart/carts
 
+### GET
+GET http://localhost:3000/cart/carts
 
-http://localhost:3000/menu/items
+### GET
+GET http://localhost:3000/menu/items
