@@ -57,7 +57,6 @@ router.post("/order", authenticate, async (req, res) => {
 
 
 
-// GET /menu/orders - Fetch user's orders (optional, for viewing orders)
 router.get("/orders", authenticate, async (req, res) => {
   try {
     const result = await pool.query(
