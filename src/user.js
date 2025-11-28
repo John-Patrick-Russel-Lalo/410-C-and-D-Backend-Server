@@ -1,38 +1,35 @@
-import express from "express"
-import jwt from "jsonwebtoken"
-import pool from "./config/db.js"
+import express from "express";
+import jwt from "jsonwebtoken";
+import pool from "./config/db.js";
+import { authenticate } from "./middleware/auth.js";
+
 const router = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET;
-import { authenticate } from "./middleware/auth.js";
 
-// Get details of the logged-in user
 router.get("/user/details", authenticate, async (req, res) => {
   try {
-    const result = await pool.query(
-      "SELECT id, name, email, role FROM users WHERE id = $1",
+    const [result] = await pool.query(
+      "SELECT id, name, email, role FROM users WHERE id = ?",
       [req.user.userId]
     );
-    if (result.rowCount === 0) {
+    if (result.length === 0) {
       return res.status(404).json({ error: "User not found" });
     }
-    res.json(result.rows[0]);
+    res.json(result[0]);
   } catch (err) {
     res.status(500).json({ error: "Server error" });
   }
 });
 
-// Example: Get driver's name (for future use)
-router.get("/user/driver/:driverId", authenticate, async (req, res) => {
+router.post("/delivery", authenticate, async (req, res) => {
   try {
-    const result = await pool.query(
-      "SELECT id, name FROM users WHERE id = $1 AND role = 'driver'",
-      [req.params.driverId]
+    const { orderId, deliveryTime } = req.body;
+    const [result] = await pool.query(
+      "UPDATE orders SET status = 'delivered', delivery_time = ? WHERE order_id = ?",
+      [deliveryTime, orderId]
     );
-    if (result.rowCount === 0) {
-      return res.status(404).json({ error: "Driver not found" });
-    }
-    res.json(result.rows[0]);
+    res.json({ message: "Delivery updated successfully" });
   } catch (err) {
     res.status(500).json({ error: "Server error" });
   }
