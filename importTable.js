@@ -55,11 +55,7 @@ async function importCSV(path) {
 importCSV("src/Menulist.csv") // <-- change path to your CSV
   .catch((err) => console.error("Import failed:", err));
 
-
-  //test
-
-
-  //task add value
+// imported the correct column in the database from picture to pictures with S
 
   
   
