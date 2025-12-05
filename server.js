@@ -51,6 +51,10 @@ app.use(
 import cookieParser from "cookie-parser";
 app.use(cookieParser());
 
+app.get("/ping", (req, res) => {
+  res.status(200).send("pong");
+});
+
 // app.use( authRouter);
 app.use(authRoutes);
 app.use("/menu", menuRoutes)
