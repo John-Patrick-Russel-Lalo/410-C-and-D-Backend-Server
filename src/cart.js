@@ -15,7 +15,7 @@ router.post("/addToCart", authenticate, async (req, res) => {
 
   try {
     // Check if item exists
-    const itemResult = await query(
+    const itemResult = await pool.query(
       "SELECT * FROM menu_list WHERE id = $1",
       [item_id]
     );
@@ -66,7 +66,7 @@ router.get("/carts", authenticate, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
-        c.item_id,
+        c.id,
         c.quantity,
         m.name,
         m.price,

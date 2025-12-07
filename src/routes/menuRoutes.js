@@ -1,16 +1,12 @@
 // routes/menuRoutes.js
 import express from "express";
 import { authenticate } from "../middleware/auth.js";
-import {
-  fetchMenuItems,
-  placeOrder,
-  fetchUserOrders,
-} from "../controllers/menuController.js";
+import * as menuController from "../controllers/menuController.js";
 
 const router = express.Router();
 
-router.get("/items", authenticate, fetchMenuItems);
-router.post("/order", authenticate, placeOrder);
-router.get("/orders", authenticate, fetchUserOrders);
+router.get("/items", authenticate, menuController.fetchMenuItems);
+router.post("/order", authenticate, menuController.placeOrder);
+router.get("/orders", authenticate, menuController.fetchUserOrders);
 
 export default router;
