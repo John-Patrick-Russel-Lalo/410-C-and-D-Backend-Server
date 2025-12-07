@@ -6,7 +6,6 @@ dotenv.config();
 
 import { initWebSocket } from "./src/websocket.js";
 import { cleanUpDatabase } from "./src/cleanup.js";
-import authRouter from "./src/logAuth.js";
 
 import userRouter from "./src/user.js";
 import menuRouter from "./src/menu.js";
