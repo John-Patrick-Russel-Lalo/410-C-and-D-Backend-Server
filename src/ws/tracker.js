@@ -1,89 +1,106 @@
 import { WebSocketServer } from "ws";
 
+const users = new Map(); 
+// Structure:
+// users.set(socket, {
+//   userId,
+//   userType,
+//   orderId,
+//   shareLocation: true/false
+// });
+
 export function initTrackerWS(server) {
   const wss = new WebSocketServer({ server, path: "/tracker" });
 
-  // Store connected users
-  const clients = {
-    customers: new Map(), // userId → ws
-    drivers: new Map(),
-  };
-
-  const broadcast = (data, targetGroup) => {
-    const group = clients[targetGroup];
-    if (!group) return;
-
-    const message = JSON.stringify(data);
-
-    for (const [_, ws] of group) {
-      if (ws.readyState === ws.OPEN) {
-        ws.send(message);
-      }
-    }
-  };
+  console.log("🚀 Tracker WebSocket active");
 
   wss.on("connection", (ws) => {
-    console.log("📡 New socket connected to /tracker");
+    console.log("🟢 Client connected to tracker");
 
-    let userType = null;
-    let userId = null;
+    // Default profile for client
+    users.set(ws, {
+      userId: null,
+      userType: null,
+      orderId: null,
+      shareLocation: true,
+    });
 
     ws.on("message", (msg) => {
       try {
         const data = JSON.parse(msg);
 
-        // First message → register client
+        // ---------------------------------
+        // 1. USER REGISTERS
+        // ---------------------------------
         if (data.type === "register") {
-          userType = data.userType; // "customer" or "driver"
-          userId = data.userId;
+          users.set(ws, {
+            userId: data.userId,
+            userType: data.userType,
+            orderId: data.orderId,
+            shareLocation: true,
+          });
 
-          if (userType === "customer") {
-            clients.customers.set(userId, ws);
-          } else if (userType === "driver") {
-            clients.drivers.set(userId, ws);
-          }
-
-          console.log(`🟢 Registered ${userType}: ${userId}`);
+          console.log(`📌 ${data.userType} ${data.userId} joined order ${data.orderId}`);
           return;
         }
 
-        // Handle GPS update
+        // ---------------------------------
+        // 2. DRIVER TOGGLES PRIVACY
+        // ---------------------------------
+        if (data.type === "toggleShare") {
+          const user = users.get(ws);
+          user.shareLocation = data.shareLocation;
+          users.set(ws, user);
+
+          console.log(`🔒 Driver ${user.userId} shareLocation: ${user.shareLocation}`);
+          return;
+        }
+
+        // ---------------------------------
+        // 3. LOCATION UPDATE
+        // ---------------------------------
         if (data.type === "location") {
-          if (!userType || !userId) return;
+          const sender = users.get(ws);
+          if (!sender || !sender.orderId) return;
 
-          const payload = {
-            type: "locationUpdate",
-            userType,
-            userId,
-            lat: data.lat,
-            lng: data.lng,
-            timestamp: Date.now(),
-          };
+          // Don't broadcast if sender is driver with disabled sharing
+          if (sender.userType === "driver" && sender.shareLocation === false) return;
 
-          // Drivers → broadcast to all customers
-          if (userType === "driver") {
-            broadcast(payload, "customers");
-          }
+          // Broadcast only to people with same orderId
+          wss.clients.forEach((client) => {
+            if (client.readyState === 1) {
+              const receiver = users.get(client);
 
-          // Customers → broadcast to all drivers
-          if (userType === "customer") {
-            broadcast(payload, "drivers");
-          }
+              if (!receiver) return;
+
+              // Only to same order
+              if (receiver.orderId !== sender.orderId) return;
+
+              // Don't send back to itself
+              if (client === ws) return;
+
+              client.send(
+                JSON.stringify({
+                  type: "locationUpdate",
+                  lat: data.lat,
+                  lng: data.lng,
+                  userId: sender.userId,
+                  userType: sender.userType,
+                })
+              );
+            }
+          });
+
+          return;
         }
       } catch (err) {
-        console.error("Invalid WS message:", err);
+        console.log("❌ WS Error:", err);
       }
     });
 
     ws.on("close", () => {
-      if (userType && userId) {
-        if (userType === "customer") clients.customers.delete(userId);
-        if (userType === "driver") clients.drivers.delete(userId);
-
-        console.log(`🔴 Disconnected ${userType}: ${userId}`);
-      }
+      users.delete(ws);
+      console.log("🔴 Client disconnected from tracker");
     });
   });
-
-  console.log("🚀 Tracker WebSocket initialized at ws://localhost:PORT/tracker");
 }
