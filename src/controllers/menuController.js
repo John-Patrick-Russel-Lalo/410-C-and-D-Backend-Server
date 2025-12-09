@@ -12,24 +12,6 @@ export const fetchMenuItems = async (req, res) => {
   }
 };
 
-// POST /menu/order
-export const placeOrder = async (req, res) => {
-  const { item_id, quantity } = req.body;
-  if (!item_id || !quantity || quantity <= 0) {
-    return res.status(400).json({ error: "Invalid item_id or quantity" });
-  }
-
-  try {
-    const item = await menuModel.getMenuItemById(item_id);
-    if (!item) return res.status(404).json({ error: "Menu item not found" });
-
-    const order = await menuModel.createOrder(req.user.userId, item_id, quantity);
-    res.json({ order_id: order.order_id, message: "Order placed successfully" });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to place order" });
-  }
-};
 
 // GET /menu/orders
 export const fetchUserOrders = async (req, res) => {

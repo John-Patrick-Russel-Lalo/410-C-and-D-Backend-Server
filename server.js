@@ -4,7 +4,8 @@ import cors from "cors";
 import dotenv from "dotenv";
 dotenv.config();
 
-import { initWebSocket } from "./src/websocket.js";
+// import { initWebSocket } from "./src/websocket.js";
+// import { initTrackerWS } from "./src/ws/tracker.js";
 import { cleanUpDatabase } from "./src/cleanup.js";
 
 import userRouter from "./src/user.js";
@@ -61,8 +62,8 @@ app.get("/ping", (req, res) => {
 app.use(authRoutes);
 app.use("/menu", menuRoutes)
 
-initWebSocket(server);
 cleanUpDatabase();
+// initTrackerWS(server);
 
 // app.use("/menu", menuRouter);
 app.use("/images", express.static("./src/pictures"));

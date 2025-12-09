@@ -16,14 +16,6 @@ export const getMenuItemById = async (id) => {
   return result.rows[0];
 };
 
-// Place a new order
-export const createOrder = async (userId, itemId, quantity) => {
-  const result = await pool.query(
-    "INSERT INTO orders (user_id, item_id, quantity, status) VALUES ($1, $2, $3, 'pending') RETURNING order_id",
-    [userId, itemId, quantity]
-  );
-  return result.rows[0];
-};
 
 // Fetch orders for a specific user
 export const getOrdersByUser = async (userId) => {
