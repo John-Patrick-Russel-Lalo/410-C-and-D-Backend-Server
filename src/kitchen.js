@@ -41,5 +41,44 @@ router.get("/orders", authenticate, async (req, res) => {
 });
 
 
+// PUT /orders/:orderId/assign-driver
+router.put("/orders/:orderId/assign-driver", authenticate, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { driverId } = req.body;
+    const user = req.user; // Comes from authenticate middleware
+
+    // Only kitchen staff can assign drivers
+    if (user.role !== "staff") {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    // Check if driver exists
+    const driverRes = await pool.query("SELECT id, name FROM users WHERE id = $1 AND role = 'driver'", [driverId]);
+    if (driverRes.rows.length === 0) {
+      return res.status(400).json({ error: "Driver not found" });
+    }
+    const driver = driverRes.rows[0];
+
+    // Update the order with the driver
+    await pool.query(
+      "UPDATE orders SET driver_id = $1 WHERE id = $2",
+      [driverId, orderId]
+    );
+
+    // Return updated info for frontend
+    res.json({
+      message: `Driver ${driver.name} assigned to order #${orderId}`,
+      driverId: driver.id,
+      driverName: driver.name,
+    });
+  } catch (err) {
+    console.error("❌ Failed to assign driver:", err);
+    res.status(500).json({ error: "Server error assigning driver" });
+  }
+});
+
+
+
 
 export default router;
