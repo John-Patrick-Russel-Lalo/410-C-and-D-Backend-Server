@@ -1,13 +1,12 @@
 import { WebSocketServer } from "ws";
+import jwt from "jsonwebtoken";
 
 const users = new Map(); 
 // Structure:
-// users.set(socket, {
-//   userId,
-//   userType,
-//   orderId,
-//   shareLocation: true/false
-// });
+// users.set(socket, { userId, userType, orderId, shareLocation })
+
+// Secret must match your backend JWT secret
+const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret";
 
 export function initTrackerWS(server) {
   const wss = new WebSocketServer({ server, path: "/tracker" });
@@ -17,7 +16,7 @@ export function initTrackerWS(server) {
   wss.on("connection", (ws) => {
     console.log("🟢 Client connected to tracker");
 
-    // Default profile for client
+    // Initialize default profile
     users.set(ws, {
       userId: null,
       userType: null,
@@ -30,17 +29,46 @@ export function initTrackerWS(server) {
         const data = JSON.parse(msg);
 
         // ---------------------------------
-        // 1. USER REGISTERS
+        // 0. AUTHENTICATION: decode JWT
+        // ---------------------------------
+        if (data.token) {
+          try {
+            const payload = jwt.verify(data.token, JWT_SECRET);
+            const user = users.get(ws);
+            users.set(ws, {
+              ...user,
+              userId: payload.id,
+              userType: payload.role,
+            });
+            return;
+          } catch (err) {
+            ws.send(JSON.stringify({ type: "error", message: "Invalid token" }));
+            return;
+          }
+        }
+
+        const sender = users.get(ws);
+        if (!sender || !sender.userId) {
+          ws.send(JSON.stringify({ type: "error", message: "Not authenticated" }));
+          return;
+        }
+
+        // ---------------------------------
+        // 1. REGISTER TO ORDER
         // ---------------------------------
         if (data.type === "register") {
+          if (!data.orderId) {
+            ws.send(JSON.stringify({ type: "error", message: "Missing orderId" }));
+            return;
+          }
+
           users.set(ws, {
-            userId: data.userId,
-            userType: data.userType,
+            ...sender,
             orderId: data.orderId,
-            shareLocation: true,
+            shareLocation: sender.userType === "driver" ? true : false,
           });
 
-          console.log(`📌 ${data.userType} ${data.userId} joined order ${data.orderId}`);
+          console.log(`📌 ${sender.userType} ${sender.userId} joined order ${data.orderId}`);
           return;
         }
 
@@ -48,11 +76,13 @@ export function initTrackerWS(server) {
         // 2. DRIVER TOGGLES PRIVACY
         // ---------------------------------
         if (data.type === "toggleShare") {
-          const user = users.get(ws);
-          user.shareLocation = data.shareLocation;
-          users.set(ws, user);
-
-          console.log(`🔒 Driver ${user.userId} shareLocation: ${user.shareLocation}`);
+          if (sender.userType !== "driver") {
+            ws.send(JSON.stringify({ type: "error", message: "Only drivers can toggle sharing" }));
+            return;
+          }
+          sender.shareLocation = !!data.shareLocation;
+          users.set(ws, sender);
+          console.log(`🔒 Driver ${sender.userId} shareLocation: ${sender.shareLocation}`);
           return;
         }
 
@@ -60,41 +90,35 @@ export function initTrackerWS(server) {
         // 3. LOCATION UPDATE
         // ---------------------------------
         if (data.type === "location") {
-          const sender = users.get(ws);
-          if (!sender || !sender.orderId) return;
+          if (!sender.orderId) return;
 
-          // Don't broadcast if sender is driver with disabled sharing
-          if (sender.userType === "driver" && sender.shareLocation === false) return;
+          // Don't broadcast if driver disabled sharing
+          if (sender.userType === "driver" && !sender.shareLocation) return;
 
-          // Broadcast only to people with same orderId
+          // Broadcast to all users in the same order except sender
           wss.clients.forEach((client) => {
-            if (client.readyState === 1) {
-              const receiver = users.get(client);
+            if (client.readyState !== WebSocket.OPEN) return;
 
-              if (!receiver) return;
+            const receiver = users.get(client);
+            if (!receiver || receiver.orderId !== sender.orderId) return;
+            if (client === ws) return;
 
-              // Only to same order
-              if (receiver.orderId !== sender.orderId) return;
-
-              // Don't send back to itself
-              if (client === ws) return;
-
-              client.send(
-                JSON.stringify({
-                  type: "locationUpdate",
-                  lat: data.lat,
-                  lng: data.lng,
-                  userId: sender.userId,
-                  userType: sender.userType,
-                })
-              );
-            }
+            client.send(
+              JSON.stringify({
+                type: "locationUpdate",
+                lat: data.lat,
+                lng: data.lng,
+                userId: sender.userId,
+                userType: sender.userType,
+              })
+            );
           });
 
           return;
         }
       } catch (err) {
         console.log("❌ WS Error:", err);
+        ws.send(JSON.stringify({ type: "error", message: err.message }));
       }
     });
 
