@@ -16,6 +16,8 @@ import cartRouter from "./src/cart.js";
 import authRoutes from "./src/routes/authRoutes.js";
 import menuRoutes from "./src/routes/menuRoutes.js";
 
+import driverRouter from "./src/drivers.js";
+
 
 const app = express();
 app.use(express.json());
@@ -61,6 +63,7 @@ app.get("/ping", (req, res) => {
 // app.use( authRouter);
 app.use(authRoutes);
 app.use("/menu", menuRoutes)
+app.use("/drivers", driverRouter);
 
 cleanUpDatabase();
 initTrackerWS(server);
