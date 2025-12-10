@@ -17,6 +17,7 @@ import authRoutes from "./src/routes/authRoutes.js";
 import menuRoutes from "./src/routes/menuRoutes.js";
 
 import driverRouter from "./src/drivers.js";
+import kitchenRouter from "./src/kitchen.js";
 
 
 const app = express();
@@ -64,6 +65,8 @@ app.get("/ping", (req, res) => {
 app.use(authRoutes);
 app.use("/menu", menuRoutes)
 app.use("/drivers", driverRouter);
+app.use("/kitchen", kitchenRouter);
+
 
 cleanUpDatabase();
 initTrackerWS(server);
