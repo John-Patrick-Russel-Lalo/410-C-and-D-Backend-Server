@@ -1,7 +1,7 @@
 
 // server/src/drivers.js
 import express from "express";
-import { pool } from "./db.js"; // Your PostgreSQL pool
+import  pool  from "./config/db.js"; // Your PostgreSQL pool
 import { authenticate } from "./middleware/auth.js"; // JWT middleware
 
 const router = express.Router();
