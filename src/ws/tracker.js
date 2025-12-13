@@ -22,7 +22,7 @@ export function initTrackerWS(server) {
 
           // Validate order
           const orderRes = await pool.query(
-            "SELECT status, driver_id, customer_id FROM orders WHERE id = $1",
+            "SELECT status, driver_id, user_id FROM orders WHERE id = $1",
             [orderId]
           );
 
