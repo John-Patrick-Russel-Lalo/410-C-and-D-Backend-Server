@@ -78,6 +78,40 @@ router.put("/orders/:orderId/assign-driver", authenticate, async (req, res) => {
   }
 });
 
+// PUT /kitchen/orders/:id/status
+router.put("/orders/:id/status", authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const validStatuses = ["pending", "cooking", "ready", "completed"];
+
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: "Invalid status value" });
+    }
+
+    const result = await pool.query(
+      `
+      UPDATE orders
+      SET status = $1
+      WHERE id = $2
+      RETURNING *
+      `,
+      [status, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    res.json({ success: true, order: result.rows[0] });
+  } catch (err) {
+    console.error("Status update error:", err);
+    res.status(500).json({ error: "Server error updating status" });
+  }
+});
+
+
 
 
 
