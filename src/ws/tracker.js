@@ -154,15 +154,15 @@ export function initTrackerWS(server) {
           const order = orderRes.rows[0];
 
           // Role-based permission
-          if (userType === "customer" && order.user_id !== userId) {
-            ws.close(4002, "Customer not assigned to this order");
-            return;
-          }
+          // if (userType === "customer" && order.user_id !== userId) {
+          //   ws.close(4002, "Customer not assigned to this order");
+          //   return;
+          // }
 
-          if (userType === "driver" && order.driver_id !== userId) {
-            ws.close(4003, "Driver not assigned to this order");
-            return;
-          }
+          // if (userType === "driver" && order.driver_id !== userId) {
+          //   ws.close(4003, "Driver not assigned to this order");
+          //   return;
+          // }
 
           // Store connection
           if (!clients.has(orderId)) {
