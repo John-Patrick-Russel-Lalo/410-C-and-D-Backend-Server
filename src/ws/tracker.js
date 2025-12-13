@@ -34,7 +34,7 @@ export function initTrackerWS(server) {
           const order = orderRes.rows[0];
 
           // Role-based permission
-          if (userType === "customer" && order.customer_id !== userId) {
+          if (userType === "customer" && order.user_id !== userId) {
             ws.close();
             return;
           }
