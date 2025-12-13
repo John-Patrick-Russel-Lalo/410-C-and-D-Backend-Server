@@ -46,7 +46,7 @@ router.put("/orders/:orderId/assign-driver", authenticate, async (req, res) => {
   try {
     const { orderId } = req.params;
     const { driverId } = req.body;
-    const user = req.user; // Comes from authenticate middleware
+    const user = req.user;
 
     // Only kitchen staff can assign drivers
     if (user.role !== "staff") {
@@ -54,29 +54,42 @@ router.put("/orders/:orderId/assign-driver", authenticate, async (req, res) => {
     }
 
     // Check if driver exists
-    const driverRes = await pool.query("SELECT id, name FROM users WHERE id = $1 AND role = 'driver'", [driverId]);
+    const driverRes = await pool.query(
+      "SELECT id, name FROM users WHERE id = $1 AND role = 'driver'",
+      [driverId]
+    );
+
     if (driverRes.rows.length === 0) {
       return res.status(400).json({ error: "Driver not found" });
     }
+
     const driver = driverRes.rows[0];
 
-    // Update the order with the driver
-    await pool.query(
-      "UPDATE orders SET driver_id = $1 WHERE id = $2",
+    // ✅ Update driver + status
+    const updateRes = await pool.query(
+      `
+      UPDATE orders
+      SET driver_id = $1,
+          status = 'assigned'
+      WHERE id = $2
+      RETURNING id, status
+      `,
       [driverId, orderId]
     );
 
-    // Return updated info for frontend
     res.json({
       message: `Driver ${driver.name} assigned to order #${orderId}`,
+      orderId,
+      status: updateRes.rows[0].status,
       driverId: driver.id,
-      driverName: driver.name,
+      driverName: driver.name
     });
   } catch (err) {
     console.error("❌ Failed to assign driver:", err);
     res.status(500).json({ error: "Server error assigning driver" });
   }
 });
+
 
 // PUT /kitchen/orders/:id/status
 router.put("/orders/:id/status", authenticate, async (req, res) => {
