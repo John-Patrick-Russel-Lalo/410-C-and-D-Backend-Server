@@ -112,6 +112,32 @@ router.put("/orders/:id/status", authenticate, async (req, res) => {
 });
 
 
+router.get("/orders/assigned", authenticate, async (req, res) => {
+  try {
+    const user = req.user;
+
+    if (user.role !== "staff") {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    const result = await pool.query(`
+      SELECT
+        o.*,
+        u.id   AS "driverId",
+        u.name AS "driverName"
+      FROM orders o
+      JOIN users u ON o.driver_id = u.id
+      ORDER BY o.created_at DESC
+    `);
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error("❌ Failed to fetch assigned orders:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+
 
 
 
