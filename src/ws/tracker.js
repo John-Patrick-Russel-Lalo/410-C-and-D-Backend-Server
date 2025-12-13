@@ -1,11 +1,11 @@
-import WebSocket from "ws";
+import { WebSocketServer } from "ws";
 import jwt from "jsonwebtoken";
-import pool from "./db.js"; // your pg pool
+import pool from "../config/db.js"; // your pg pool
 
 const clients = new Map(); // orderId -> { customer, driver }
 
-export function initTrackerWSS(server) {
-  const wss = new WebSocket.Server({ server, path: "/tracker" });
+export function initTrackerWS(server) {
+  const wss = new WebSocketServer({ server, path: "/tracker" });
 
   wss.on("connection", (ws, req) => {
     ws.user = null;
