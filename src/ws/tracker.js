@@ -213,12 +213,110 @@
 
 
 
+// import { WebSocketServer } from "ws";
+// import pool from "../config/db.js";
+
+// const driverConnections = new Map();   // driverId -> ws
+// const customerConnections = new Map(); // customerId -> ws
+// const orderToDriver = new Map();       // orderId -> driverId
+
+// export function initTrackerWS(server) {
+//   const wss = new WebSocketServer({ server, path: "/tracker" });
+
+//   wss.on("connection", (ws) => {
+//     ws.user = null;
+
+//     ws.on("message", async (msg) => {
+//       let data;
+//       try {
+//         data = JSON.parse(msg);
+//       } catch {
+//         ws.close(4000, "Invalid JSON");
+//         return;
+//       }
+
+//       // -------------------------
+//       // REGISTER USER
+//       // -------------------------
+//       if (data.type === "register") {
+//         const { userType, userId } = data;
+
+//         if (userType === "driver") {
+//           driverConnections.set(userId, ws);
+//           const res = await pool.query(
+//             "SELECT id, user_id FROM orders WHERE driver_id = $1 AND status = 'assigned'",
+//             [userId]
+//           );
+//           res.rows.forEach((order) => orderToDriver.set(order.id, userId));
+//         } else if (userType === "customer") {
+//           customerConnections.set(userId, ws);
+//         }
+
+//         ws.user = { userType, userId };
+//         console.log(`🟢 ${userType} connected: ${userId}`);
+//       }
+
+//       // -------------------------
+//       // DRIVER GPS UPDATE
+//       // -------------------------
+//       if (data.type === "location" && ws.user.userType === "driver") {
+//         const driverId = ws.user.userId;
+//         const { lat, lng } = data;
+
+//         const res = await pool.query(
+//           "SELECT id, user_id FROM orders WHERE driver_id = $1 AND status = 'assigned'",
+//           [driverId]
+//         );
+
+//         res.rows.forEach((order) => {
+//           const customerWs = customerConnections.get(order.user_id);
+//           if (customerWs && customerWs.readyState === 1) {
+//             customerWs.send(
+//               JSON.stringify({
+//                 type: "locationUpdate",
+//                 driverId,
+//                 orderId: order.id,
+//                 lat,
+//                 lng,
+//               })
+//             );
+//           }
+//         });
+//       }
+//     });
+
+
+
+//     ws.on("close", (code, reason) => {
+//       if (!ws.user) return;
+//       const { userType, userId } = ws.user;
+
+//       driverConnections.delete(userType === "driver" ? userId : undefined);
+//       customerConnections.delete(userType === "customer" ? userId : undefined);
+
+//       console.log(`🔴 ${userType} disconnected: ${userId}. Code: ${code}, Reason: ${reason}`);
+//     });
+
+//     ws.on("error", (err) => {
+//       console.error("WS connection error:", err);
+//     });
+//   });
+
+
+  
+
+//   console.log("🚀 Tracker WebSocket running at /tracker");
+// }
+
+
+
+
+
 import { WebSocketServer } from "ws";
 import pool from "../config/db.js";
 
 const driverConnections = new Map();   // driverId -> ws
 const customerConnections = new Map(); // customerId -> ws
-const orderToDriver = new Map();       // orderId -> driverId
 
 export function initTrackerWS(server) {
   const wss = new WebSocketServer({ server, path: "/tracker" });
@@ -235,68 +333,105 @@ export function initTrackerWS(server) {
         return;
       }
 
-      // -------------------------
-      // REGISTER USER
-      // -------------------------
+      // =========================
+      // REGISTER
+      // =========================
       if (data.type === "register") {
         const { userType, userId } = data;
 
         if (userType === "driver") {
           driverConnections.set(userId, ws);
-          const res = await pool.query(
-            "SELECT id, user_id FROM orders WHERE driver_id = $1 AND status = 'assigned'",
-            [userId]
-          );
-          res.rows.forEach((order) => orderToDriver.set(order.id, userId));
-        } else if (userType === "customer") {
+        }
+
+        if (userType === "customer") {
           customerConnections.set(userId, ws);
         }
 
         ws.user = { userType, userId };
         console.log(`🟢 ${userType} connected: ${userId}`);
+        return;
       }
 
-      // -------------------------
-      // DRIVER GPS UPDATE
-      // -------------------------
+      if (!ws.user) return;
+
+      // =========================
+      // DRIVER → CUSTOMER (GPS)
+      // =========================
       if (data.type === "location" && ws.user.userType === "driver") {
-        const driverId = ws.user.userId;
         const { lat, lng } = data;
+        const driverId = ws.user.userId;
 
         const res = await pool.query(
-          "SELECT id, user_id FROM orders WHERE driver_id = $1 AND status = 'assigned'",
+          `SELECT id, user_id 
+           FROM orders 
+           WHERE driver_id = $1 AND status = 'assigned'`,
           [driverId]
         );
 
-        res.rows.forEach((order) => {
+        for (const order of res.rows) {
           const customerWs = customerConnections.get(order.user_id);
-          if (customerWs && customerWs.readyState === 1) {
+          if (customerWs?.readyState === 1) {
             customerWs.send(
               JSON.stringify({
                 type: "locationUpdate",
-                driverId,
                 orderId: order.id,
                 lat,
                 lng,
               })
             );
           }
-        });
+        }
+      }
+
+      // =========================
+      // CUSTOMER → DRIVER (PIN / GPS)
+      // =========================
+      if (data.type === "deliveryLocation" && ws.user.userType === "customer") {
+        const { orderId, lat, lng } = data;
+        const customerId = ws.user.userId;
+
+        // Validate ownership
+        const res = await pool.query(
+          `SELECT driver_id 
+           FROM orders 
+           WHERE id = $1 AND user_id = $2 AND status = 'assigned'`,
+          [orderId, customerId]
+        );
+
+        if (res.rows.length === 0) return;
+
+        const driverId = res.rows[0].driver_id;
+        const driverWs = driverConnections.get(driverId);
+
+        if (driverWs?.readyState === 1) {
+          driverWs.send(
+            JSON.stringify({
+              type: "deliveryLocation",
+              orderId,
+              lat,
+              lng,
+            })
+          );
+        }
       }
     });
 
-    ws.on("close", (code, reason) => {
+    // =========================
+    // CLEANUP
+    // =========================
+    ws.on("close", () => {
       if (!ws.user) return;
+
       const { userType, userId } = ws.user;
 
-      driverConnections.delete(userType === "driver" ? userId : undefined);
-      customerConnections.delete(userType === "customer" ? userId : undefined);
+      if (userType === "driver") driverConnections.delete(userId);
+      if (userType === "customer") customerConnections.delete(userId);
 
-      console.log(`🔴 ${userType} disconnected: ${userId}. Code: ${code}, Reason: ${reason}`);
+      console.log(`🔴 ${userType} disconnected: ${userId}`);
     });
 
     ws.on("error", (err) => {
-      console.error("WS connection error:", err);
+      console.error("WS error:", err);
     });
   });
 
