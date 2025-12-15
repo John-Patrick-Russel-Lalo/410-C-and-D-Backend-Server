@@ -403,6 +403,7 @@ console.log(data.type)
 
         const driverId = res.rows[0].driver_id;
         const driverWs = driverConnections.get(driverId);
+        console.log(driverId, driverWs)
 
         if (driverWs?.readyState === 1) {
           driverWs.send(
