@@ -389,6 +389,7 @@ console.log(data.type)
       if (data.type === "deliveryLocation") {
         const { orderId, lat, lng } = data;
         const customerId = ws.user.userId;
+        console.log("received deliveryLocation from customer")
 
         // Validate ownership
         const res = await pool.query(
