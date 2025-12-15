@@ -386,7 +386,7 @@ export function initTrackerWS(server) {
       // =========================
       // CUSTOMER → DRIVER (PIN / GPS)
       // =========================
-      if (data.type === "deliveryLocation" && ws.user.userType === "customer") {
+      if (data.type === "deliveryLocation") {
         const { orderId, lat, lng } = data;
         const customerId = ws.user.userId;
 
@@ -414,8 +414,9 @@ export function initTrackerWS(server) {
             })
 
           );
-          console.log("nag send")
+          
         }
+        console.log("nag send")
       }
     });
 
