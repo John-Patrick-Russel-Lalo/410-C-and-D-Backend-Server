@@ -1,7 +1,6 @@
 import express from "express";
 import pool from "../config/db.js";
-import { authenticate } from "../middleware/auth.js";
-import { customerConnections } from "../websocket/tracker.js"; // your WS map
+import { authenticate } from "../middleware/auth.js"; // if you have auth
 
 const router = express.Router();
 
@@ -11,10 +10,13 @@ router.put("/orders/:orderId/start", authenticate, async (req, res) => {
     const { orderId } = req.params;
     const user = req.user;
 
-    if (user.role !== "driver") return res.status(403).json({ error: "Access denied" });
+    if (user.role !== "driver") {
+      return res.status(403).json({ error: "Access denied" });
+    }
 
+    // Check the order exists and belongs to this driver
     const orderRes = await pool.query(
-      "SELECT id, status, user_id FROM orders WHERE id = $1 AND driver_id = $2",
+      "SELECT id, status FROM orders WHERE id = $1 AND driver_id = $2",
       [orderId, user.id]
     );
 
@@ -26,6 +28,7 @@ router.put("/orders/:orderId/start", authenticate, async (req, res) => {
       return res.status(400).json({ error: `Order is already ${orderRes.rows[0].status}` });
     }
 
+    // Update status to delivering
     const updateRes = await pool.query(
       "UPDATE orders SET status = 'delivering' WHERE id = $1 RETURNING *",
       [orderId]
@@ -33,18 +36,7 @@ router.put("/orders/:orderId/start", authenticate, async (req, res) => {
 
     const updatedOrder = updateRes.rows[0];
 
-    // Notify customer via WS
-    const customerWs = customerConnections.get(orderRes.rows[0].user_id);
-    if (customerWs?.readyState === 1) {
-      customerWs.send(
-        JSON.stringify({
-          type: "statusUpdate",
-          orderId: updatedOrder.id,
-          status: "delivering",
-        })
-      );
-    }
-
+    // Return the updated order
     res.json({ success: true, order: updatedOrder });
   } catch (err) {
     console.error("Start delivery error:", err);
