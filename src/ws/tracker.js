@@ -407,7 +407,6 @@ export function initTrackerWS(server) {
           driverWs.send(
             JSON.stringify({
               type: "deliveryLocation",
-              orderId,
               lat,
               lng,
 
