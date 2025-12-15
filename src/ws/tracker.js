@@ -382,7 +382,7 @@ export function initTrackerWS(server) {
           }
         }
       }
-
+console.log(data.type)
       // =========================
       // CUSTOMER → DRIVER (PIN / GPS)
       // =========================
