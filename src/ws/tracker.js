@@ -410,8 +410,11 @@ export function initTrackerWS(server) {
               orderId,
               lat,
               lng,
+
             })
+
           );
+          console.log("nag send")
         }
       }
     });
